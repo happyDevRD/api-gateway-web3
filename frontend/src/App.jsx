@@ -11,6 +11,8 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  const [userRole, setUserRoleState] = useState("")
+
   useEffect(() => {
     if (account) {
       checkAccess(account)
@@ -24,7 +26,11 @@ function App() {
         setAccount(accounts[0])
       } catch (err) {
         console.error(err)
-        setError("Failed to connect wallet")
+        if (err.code === 4001) {
+          setError("You rejected the connection request in MetaMask.")
+        } else {
+          setError("Failed to connect wallet: " + (err.message || err))
+        }
       }
     } else {
       setError("Please install Metamask")
@@ -35,7 +41,11 @@ function App() {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum)
       const contract = new ethers.Contract(CONTRACT_ADDRESS, AccessRegistry, provider)
-      const access = await contract.hasAccess(user)
+
+      const role = await contract.userRoles(user)
+      setUserRoleState(role)
+
+      const access = await contract.checkAccessForAddress("/api/data", user)
       setHasAccess(access)
     } catch (err) {
       console.error(err)
@@ -43,13 +53,13 @@ function App() {
     }
   }
 
-  const grantAccess = async () => {
+  const setRoleUser = async () => {
     try {
       setLoading(true)
       const provider = new ethers.BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
       const contract = new ethers.Contract(CONTRACT_ADDRESS, AccessRegistry, signer)
-      const tx = await contract.grantAccess(account)
+      const tx = await contract.setUserRole(account, "USER")
       await tx.wait()
       setLoading(false)
       checkAccess(account)
@@ -100,10 +110,12 @@ function App() {
             <div className="bg-slate-700/50 p-4 rounded-lg">
               <p className="text-sm text-slate-400 mb-1">Connected Account</p>
               <p className="font-mono text-xs break-all text-emerald-300">{account}</p>
+              <p className="text-sm text-slate-400 mt-2 mb-1">Current Role</p>
+              <p className="font-mono text-xs break-all text-purple-300">{userRole || "NONE"}</p>
             </div>
 
             <div className="flex items-center justify-between bg-slate-700/50 p-4 rounded-lg">
-              <span className="text-slate-300">Access Status</span>
+              <span className="text-slate-300">Access to /api/data</span>
               <span
                 className={`px-3 py-1 rounded-full text-xs font-bold ${hasAccess ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
                   }`}
@@ -114,11 +126,11 @@ function App() {
 
             {!hasAccess && (
               <button
-                onClick={grantAccess}
+                onClick={setRoleUser}
                 disabled={loading}
                 className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white py-3 rounded-lg font-medium transition-all flex justify-center items-center"
               >
-                {loading ? "Processing..." : "Grant Access (On-Chain)"}
+                {loading ? "Processing..." : "Set Role: USER (On-Chain)"}
               </button>
             )}
 
@@ -137,11 +149,12 @@ function App() {
               </div>
             )}
 
-            {error && (
-              <div className="mt-4 p-3 bg-red-900/50 text-red-200 text-sm rounded-lg border border-red-800">
-                {error}
-              </div>
-            )}
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-4 p-3 bg-red-900/50 text-red-200 text-sm rounded-lg border border-red-800">
+            {error}
           </div>
         )}
       </div>

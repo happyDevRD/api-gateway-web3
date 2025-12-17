@@ -1,14 +1,12 @@
 const hre = require("hardhat");
 
 async function main() {
-    const AccessRegistry = await hre.ethers.getContractFactory("AccessRegistry");
-    const accessRegistry = await AccessRegistry.deploy();
+    const AccessPolicy = await hre.ethers.getContractFactory("AccessPolicy");
+    const accessPolicy = await AccessPolicy.deploy();
 
-    await accessRegistry.waitForDeployment();
+    await accessPolicy.waitForDeployment();
 
-    console.log(
-        `AccessRegistry deployed to ${accessRegistry.target}`
-    );
+    console.log(`AccessPolicy deployed to ${await accessPolicy.getAddress()}`);
 }
 
 main().catch((error) => {

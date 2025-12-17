@@ -24,7 +24,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return exchange.getResponse().setComplete();
         }
 
-        return Mono.fromFuture(accessRegistryService.hasAccess(userAddress))
+        String path = exchange.getRequest().getPath().value();
+
+        return Mono.fromFuture(accessRegistryService.checkAccess(path, userAddress))
                 .flatMap(hasAccess -> {
                     if (hasAccess) {
                         return chain.filter(exchange);

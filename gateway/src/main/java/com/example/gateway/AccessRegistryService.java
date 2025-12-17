@@ -9,6 +9,7 @@ import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
+import org.web3j.abi.datatypes.Utf8String;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.request.Transaction;
@@ -37,10 +38,10 @@ public class AccessRegistryService {
         web3j = Web3j.build(new HttpService(rpcUrl));
     }
 
-    public CompletableFuture<Boolean> hasAccess(String userAddress) {
+    public CompletableFuture<Boolean> checkAccess(String path, String userAddress) {
         Function function = new Function(
-                "hasAccess",
-                Arrays.asList(new Address(userAddress)),
+                "checkAccessForAddress",
+                Arrays.asList(new org.web3j.abi.datatypes.Utf8String(path), new Address(userAddress)),
                 Arrays.asList(new TypeReference<Bool>() {
                 }));
 
