@@ -1,125 +1,85 @@
-# Web3 API Gateway
+# Web3 API Gateway - Panel Administrativo
 
-Un sistema de control de acceso descentralizado que utiliza Contratos Inteligentes de Ethereum para gestionar la autorización de APIs. Este proyecto demuestra cómo proteger microservicios utilizando un Spring Cloud Gateway que verifica la identidad del usuario contra un registro "on-chain".
+> **Nuevo:** Ahora con despliegue Docker y Panel de Administración RBAC completo.
 
-## 🏗 Arquitectura
+Un sistema de control de acceso descentralizado que utiliza Contratos Inteligentes de Ethereum para gestionar la autorización de APIs. Este proyecto demuestra cómo proteger microservicios utilizando un Spring Cloud Gateway que verifica roles de usuario ("ADMIN", "USER") directamente en la blockchain.
 
-El proyecto consta de cuatro componentes principales:
+## ✨ Características Principales
 
-1. **Contratos Inteligentes (`/contracts`)**:
-    * Construido con Hardhat.
-    * `AccessRegistry.sol`: Almacena la lista de direcciones de billeteras autorizadas.
-2. **API Gateway (`/gateway`)**:
-    * Spring Boot + Spring Cloud Gateway.
-    * `AuthFilter`: Intercepta cada solicitud.
-    * `AccessRegistryService`: Consulta el contrato inteligente usando Web3j para verificar si la `X-Web3-Address` tiene acceso.
-3. **Microservicio Protegido (`/service`)**:
-    * Aplicación Spring Boot.
-    * Contiene los datos protegidos. No es accesible directamente (en un entorno de producción) y depende del Gateway para su protección.
-4. **Frontend (`/frontend`)**:
-    * Aplicación React + Vite (En Trabajo).
+* **Autenticación Descentralizada:** Sin base de datos de usuarios. Tu billetera es tu llave.
+* **RBAC en Blockchain:** Los roles y permisos se almacenan en un contrato inteligente `AccessPolicy.sol`.
+* **API Gateway Inteligente:** Intercepta tráfico y verifica permisos en tiempo real contra la blockchain.
+* **Panel de Administración (React):** Interfaz gráfica para:
+  * Gestionar Roles (Asignar ADMIN/USER a cualquier billetera).
+  * Gestionar Políticas (Definir qué roles acceden a qué rutas).
+  * Probar el acceso End-to-End.
+* **Dockerizado:** Despliegue en un comando.
 
-## 🚀 Requisitos Previos
+## 🚀 Inicio Rápido con Docker
 
-* **Java 17+** (Requerido para Gateway y Service)
-* **Node.js v18+** (Requerido para Hardhat y Frontend)
-* **Git**
+### Requisitos
 
-## 🛠️ Configuración e Instalación
+* Docker y Docker Compose
+* Node.js (Solo para la Blockchain local)
 
-1. **Clonar el repositorio:**
+### 1. Iniciar la Blockchain (Hardhat)
 
-    ```bash
-    git clone https://github.com/tu-usuario/api-gateway-web3.git
-    cd api-gateway-web3
-    ```
-
-2. **Instalar Dependencias del Contrato:**
-
-    ```bash
-    cd contracts
-    npm install
-    ```
-
-## 🏃‍♂️ Ejecución Local
-
-Para ejecutar el sistema completo, necesitas 4 terminales.
-
-### Terminal 1: Blockchain Local
-
-Inicia un nodo local de Hardhat para simular la red Ethereum.
+Necesitamos una blockchain local corriendo en tu máquina.
 
 ```bash
 cd contracts
+npm install
 npx hardhat node
 ```
 
-*Mantenlo ejecutándose. Generará una lista de cuentas de prueba.*
+*Deja esta terminal abierta.*
 
-### Terminal 2: Desplegar y Configurar Contratos
+### 2. Desplegar Contrato Inteligente
 
-Despliega el contrato `AccessRegistry` en tu nodo local.
+En una **nueva terminal**, despliega el contrato de políticas:
 
 ```bash
 cd contracts
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-*Copia la dirección desplegada si difiere de la predeterminada `0x5FbDB2315678afecb367f032d93F642f64180aa3`.*
+### 3. Arrancar la Aplicación
 
-Otorga acceso a un usuario de prueba (ej. Cuenta #1 de Hardhat):
-
-```bash
-npx hardhat run scripts/grantAccess.js --network localhost
-```
-
-### Terminal 3: Servicio Protegido
-
-Ejecuta el microservicio backend (Puerto 8081).
+Levanta el Gateway, el Microservicio y el Frontend con un solo comando:
 
 ```bash
-cd service
-./gradlew bootRun
+# Desde la raíz del proyecto
+sudo chmod 666 /var/run/docker.sock # (Solo si tienes problemas de permisos)
+docker compose up --build -d
 ```
 
-### Terminal 4: API Gateway
+### 4. Acceder
 
-Ejecuta el API Gateway (Puerto 8080).
+Abre tu navegador en: **<http://localhost>**
 
-```bash
-cd gateway
-# Asegúrate de que gateway/src/main/resources/application.properties tenga la contract.address correcta
-./gradlew bootRun
-```
+1. Conecta tu MetaMask (Red: Localhost 8545, ChainID: 31337).
+2. Usa el **"Gestor de Roles"** para asignarte el rol `USER` o `ADMIN`.
+3. Usa el **"Gestor de Políticas"** para proteger la ruta `/api/data`.
+4. Prueba el acceso con los botones de test.
 
-## 🧪 Pruebas
+---
 
-Usa `curl` para verificar el control de acceso.
+## 🛠 Ejecución Manual (Legacy/Desarrollo)
 
-**✅ Solicitud Autorizada:**
-Reemplaza con una dirección a la que se le otorgó acceso (ej. Cuenta #1).
+Si prefieres ejecutar cada servicio individualmente sin Docker:
 
-```bash
-curl -v -H "X-Web3-Address: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8" http://localhost:8080/api/data
-```
+1. **Blockchain:** `cd contracts && npx hardhat node`
+2. **Contrato:** `cd contracts && npx hardhat run scripts/deploy.js --network localhost`
+3. **Servicio:** `cd service && ./gradlew bootRun` (Puerto 8081)
+4. **Gateway:** `cd gateway && ./gradlew bootRun` (Puerto 8080)
+5. **Frontend:** `cd frontend && npm install && npm run dev` (Puerto 5173)
 
-> **Resultado Esperado:** `200 OK` - "This is protected data accessible only to authorized Service Owners!"
-
-**⛔ Solicitud No Autorizada:**
-Usando una dirección aleatoria.
-
-```bash
-curl -v -H "X-Web3-Address: 0x1234567890123456789012345678901234567890" http://localhost:8080/api/data
-```
-
-> **Resultado Esperado:** `403 Forbidden`
-
-## 📁 Estructura del Proyecto
+## 🏗 Arquitectura
 
 ```
-├── contracts/       # Contratos Inteligentes Hardhat
-├── gateway/         # Spring Boot API Gateway (Lógica de Auth)
-├── service/         # Microservicio Protegido
-├── frontend/        # Frontend React
-└── README.md        # Este archivo
+├── contracts/       # Solidity (RBAC AccessPolicy)
+├── gateway/         # Spring Cloud Gateway (Web3 Auth Filter)
+├── service/         # Microservicio Protegido (Java)
+├── frontend/        # React + Vite (Admin Dashboard)
+└── docker-compose.yml # Orquestación
 ```

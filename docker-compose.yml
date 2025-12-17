@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  service:
+    build: ./service
+    ports:
+      - "8081:8081"
+    networks:
+      - web3-network
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    environment:
+      # Point to the 'service' container name defined above
+      - SERVICE_URL=http://service:8081
+      # Localhost blockchain (host machine)
+      - CONTRACT_RPC=http://host.docker.internal:8545
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - web3-network
+    depends_on:
+      - service
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+      - "5173:80" # Map Vite port to 80 for easier access if preferred
+    networks:
+      - web3-network
+    depends_on:
+      - gateway
+
+networks:
+  web3-network:
+    driver: bridge
